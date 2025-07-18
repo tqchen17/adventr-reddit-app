@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Adventr Interactive Video Embed</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* Basic styling to make the player fill the page and center content */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* Prevent scrollbars */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #000; /* Black background for video player */
+            color: #fff; /* White text for loading message */
+            font-family: 'Inter', sans-serif;
+            font-size: 1.2em;
+        }
+        #player-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+            opacity: 0; /* Hidden initially, shown when loaded */
+            transition: opacity 0.3s ease-in-out;
+        }
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #fff;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="player-container">
+        <div id="loading-message" class="loading-overlay">
+            <div class="spinner"></div>
+            <p>Waiting for Adventr URL...</p>
+            <p>Please enter the full Adventr iframe URL in the Reddit app.</p>
+        </div>
+    </div>
+
+    <script>
+        const playerContainer = document.getElementById('player-container');
+        const loadingMessage = document.getElementById('loading-message');
+        let adventrIframe = null; // To hold the iframe element
+
+        // Function to load the Adventr video using the provided full URL
+        function loadAdventrVideo(fullAdventrUrl) {
+            if (!fullAdventrUrl) {
+                console.error('No Adventr URL provided.');
+                loadingMessage.innerHTML = '<p>Error: No Adventr URL provided.</p>';
+                return;
+            }
+
+            // Simple URL validation (optional, but good practice)
+            try {
+                new URL(fullAdventrUrl); // Check if it's a valid URL string
+            } catch (e) {
+                console.error('Invalid Adventr URL provided:', e);
+                loadingMessage.innerHTML = '<p>Error: Invalid Adventr URL provided.</p>';
+                return;
+            }
+
+            // Remove existing iframe if any
+            if (adventrIframe) {
+                adventrIframe.remove();
+                adventrIframe = null;
+            }
+
+            // Create the iframe element
+            adventrIframe = document.createElement('iframe');
+            adventrIframe.src = fullAdventrUrl; // Directly use the provided URL
+            adventrIframe.setAttribute('frameborder', '0');
+            adventrIframe.setAttribute('scrolling', 'no');
+            adventrIframe.setAttribute('referrerpolicy', 'origin');
+            adventrIframe.setAttribute('allowfullscreen', '');
+            adventrIframe.setAttribute('allow', 'autoplay; fullscreen; clipboard-read; clipboard-write; encrypted-media; geolocation; microphone; web-share');
+            
+            // Append the iframe to the container
+            playerContainer.appendChild(adventrIframe);
+
+            // Hide loading message and show iframe
+            loadingMessage.style.opacity = '0';
+            loadingMessage.style.pointerEvents = 'none';
+            adventrIframe.style.opacity = '1'; 
+
+            console.log(`Adventr iframe created with src: ${fullAdventrUrl}`);
+        }
+
+        // Listen for messages from the parent window (Devvit webview)
+        window.addEventListener('message', (event) => {
+            // IMPORTANT: Verify the origin of the message for security!
+            // In a real application, you should check event.origin against expected origins.
+            // For Devvit, the origin might be 'null' or a specific Devvit domain.
+            // For this example, we'll assume the message is from our trusted Devvit app.
+
+            const data = event.data;
+            if (data && typeof data === 'object' && data.type === 'ADVENTR_FULL_URL') {
+                const fullUrl = data.adventrUrl;
+                console.log('Received Adventr URL from parent:', fullUrl);
+                loadAdventrVideo(fullUrl);
+            }
+        });
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const initialFullUrl = urlParams.get('url');
+        if (initialFullUrl) {
+            console.log('Loading initial Adventr URL from direct URL parameter:', initialFullUrl);
+            loadAdventrVideo(initialFullUrl);
+        }
+    </script>
+</body>
+</html>
